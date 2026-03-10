@@ -55,3 +55,10 @@ export const login = asyncHandler(async (req, res) => {
         ) {
             statusCode = 423;
         }
+        res.status(statusCode).json({
+            success: false,
+            message: error.message || 'Error en el login',
+            error: error.message,
+        });
+    }
+});
