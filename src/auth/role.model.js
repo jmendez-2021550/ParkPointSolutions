@@ -27,3 +27,23 @@ export const Role = sequelize.define(
                 },
             },
         },
+        CreatedAt: {
+            type: DataTypes.DATE,
+            allowNull: false,
+            defaultValue: DataTypes.NOW,
+            field: 'created_at',
+        },
+        UpdatedAt: {
+            type: DataTypes.DATE,
+            allowNull: false,
+            defaultValue: DataTypes.NOW,
+            field: 'updated_at',
+        },
+    },
+    {
+        tableName: 'roles',
+        timestamps: true,
+        createdAt: 'created_at',
+        updatedAt: 'updated_at',
+    }
+);
