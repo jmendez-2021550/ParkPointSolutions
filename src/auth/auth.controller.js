@@ -19,3 +19,6 @@ export const register = asyncHandler(async (req, res) => {
 
         const result = await registerUserHelper(userData);
         res.status(201).json(result);
+
+    } catch (error) {
+        console.error('Error in register controller:', error);
