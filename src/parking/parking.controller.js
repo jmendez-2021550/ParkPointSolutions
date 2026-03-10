@@ -126,3 +126,25 @@ export const getReservationById = async (req, res, next) => {
         next(err);
     }
 };
+
+export const cancelReservation = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const reservation = await Reservation.findByPk(id);
+        if (!reservation) return res.status(404).json({ error: 'Reserva no encontrada' });
+
+        await reservation.update({ Status: 'cancelled' });
+
+        // Sincronizar con MongoDB
+        try {
+            const { updateReservationStatusInMongo } = await import('../../helpers/mongo-sync.js');
+            await updateReservationStatusInMongo(reservation.Id, 'cancelled');
+        } catch (mongoErr) {
+            console.warn('MongoDB sync warning:', mongoErr.message);
+        }
+
+        res.json({ mensaje: 'Reserva cancelada', reserva: serializeReservation(reservation) });
+    } catch (err) {
+        next(err);
+    }
+};
