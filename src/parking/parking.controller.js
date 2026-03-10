@@ -16,3 +16,14 @@ export const getSpots = async (req, res, next) => {
         next(err);
     }
 };
+
+export const getSpotById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const spot = await ParkingSpot.findByPk(id, { include: ['Reservations'] });
+    if (!spot) return res.status(404).json({ error: 'Espacio no encontrado' });
+    res.json(serializeParkingSpot(spot));
+  } catch (err) {
+    next(err);
+  }
+};
