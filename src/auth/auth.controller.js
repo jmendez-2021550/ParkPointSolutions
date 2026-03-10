@@ -24,3 +24,10 @@ export const register = asyncHandler(async (req, res) => {
         console.error('Error in register controller:', error);
 
         let statusCode = 400;
+        if (
+            error.message.includes('ya está registrado') ||
+            error.message.includes('ya está en uso') ||
+            error.message.includes('Ya existe un usuario')
+        ) {
+            statusCode = 409;
+        }
