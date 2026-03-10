@@ -18,12 +18,26 @@ export const getSpots = async (req, res, next) => {
 };
 
 export const getSpotById = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const spot = await ParkingSpot.findByPk(id, { include: ['Reservations'] });
-    if (!spot) return res.status(404).json({ error: 'Espacio no encontrado' });
-    res.json(serializeParkingSpot(spot));
-  } catch (err) {
-    next(err);
-  }
+    try {
+        const { id } = req.params;
+        const spot = await ParkingSpot.findByPk(id, { include: ['Reservations'] });
+        if (!spot) return res.status(404).json({ error: 'Espacio no encontrado' });
+        res.json(serializeParkingSpot(spot));
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const updateSpotStatus = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { status, sensorType } = req.body;
+        const spot = await ParkingSpot.findByPk(id);
+        if (!spot) return res.status(404).json({ error: 'Espacio no encontrado' });
+
+        await spot.update({ Status: status, SensorType: sensorType || spot.SensorType, LastSeenAt: new Date() });
+        res.json(serializeParkingSpot(spot));
+    } catch (err) {
+        next(err);
+    }
 };
