@@ -148,3 +148,148 @@ export const cancelReservation = async (req, res, next) => {
         next(err);
     }
 };
+
+export const checkoutReservation = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const reservation = await Reservation.findByPk(id, {
+            include: ['User', 'ParkingSpot'],
+        });
+        if (!reservation) return res.status(404).json({ error: 'Reserva no encontrada' });
+
+        // sólo el dueño de la reserva puede hacer checkout
+        if (req.userId !== reservation.UserId) {
+            return res.status(403).json({ error: 'No tienes permiso para esta acción' });
+        }
+
+        // generar factura en PDF con diseño profesional
+        const PDFDocument = (await import('pdfkit')).default;
+        const doc = new PDFDocument({
+            bufferPages: true,
+            margin: 40,
+        });
+        const buffers = [];
+        doc.on('data', (chunk) => buffers.push(chunk));
+        doc.on('end', async () => {
+            const pdfBuffer = Buffer.concat(buffers);
+
+            // enviar por correo la factura al usuario (con manejo de errores)
+            try {
+                const { sendInvoiceEmail } = await import('../../helpers/email-service.js');
+                const userEmail = reservation.User?.Email;
+                const userName = reservation.User?.Name;
+                const userSurname = reservation.User?.Surname;
+
+                if (!userEmail) {
+                    console.error('Checkout: usuario sin email, no se puede enviar factura', reservation.Id);
+                    await reservation.update({ Status: 'completed' });
+                    return res.status(200).json({ mensaje: 'Checkout realizado, pero sin código de verificación para email', reserva: serializeReservation(reservation) });
+                }
+
+                console.log(`Checkout: enviando factura a ${userEmail} para reserva ${reservation.Id}`);
+                await sendInvoiceEmail(userEmail, userName, userSurname, pdfBuffer);
+                console.log('Checkout: factura enviada correctamente');
+
+                // actualizar estado de reserva
+                await reservation.update({ Status: 'completed' });
+
+                // actualizar en MongoDB
+                try {
+                    const { MongoReservation } = await import('./reservation.mongo.model.js');
+                    await MongoReservation.updateOne(
+                        { reservationId: reservation.Id },
+                        { status: 'completed', syncedFromPostgres: new Date() }
+                    );
+                } catch (mongoErr) {
+                    console.warn('MongoDB sync warning:', mongoErr.message);
+                }
+
+                res.json({ mensaje: 'Checkout realizado, factura enviada', reserva: serializeReservation(reservation) });
+            } catch (emailErr) {
+                console.error('Checkout: error al enviar factura por correo:', emailErr);
+                await reservation.update({ Status: 'completed' });
+                return res.status(200).json({ mensaje: 'Checkout realizado, pero fallo al enviar la factura', error: emailErr.message, reserva: serializeReservation(reservation) });
+            }
+        });
+
+        // Diseño profesional del PDF
+        const amountGTQ = (reservation.PriceCents / 100).toFixed(2);
+        const reservationDate = new Date().toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+        });
+        const startTime = new Date(reservation.StartAt).toLocaleString('es-ES');
+        const endTime = new Date(reservation.EndAt).toLocaleString('es-ES');
+
+        // Encabezado
+        doc.fontSize(24).font('Helvetica-Bold').text('ParkPoint Solutions', { align: 'center' });
+        doc.fontSize(10).font('Helvetica').text('Sistema de Estacionamiento Inteligente', { align: 'center' });
+        doc.moveDown(0.5);
+        doc.fontSize(10).text('Avenida Principal, Guatemala | Tel: +502-1234-5678', { align: 'center' });
+        doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke('#007bff');
+        doc.moveDown();
+
+        // Título
+        doc.fontSize(16).font('Helvetica-Bold').text('FACTURA DE RESERVA', { align: 'center' });
+        doc.moveDown();
+
+        // Información de la factura
+        doc.fontSize(10).font('Helvetica');
+        doc.text(`Número de Factura: ${reservation.Id}`, 40);
+        doc.text(`Fecha: ${reservationDate}`);
+        doc.moveDown();
+
+        // Información del cliente
+        doc.fontSize(11).font('Helvetica-Bold').text('INFORMACIÓN DEL CLIENTE');
+        doc.fontSize(10).font('Helvetica');
+        doc.text(`Nombre: ${reservation.User.Name} ${reservation.User.Surname}`);
+        doc.text(`Email: ${reservation.User.Email}`);
+        doc.moveDown();
+
+        // Detalles de la reserva
+        doc.fontSize(11).font('Helvetica-Bold').text('DETALLES DE LA RESERVA');
+        doc.fontSize(10).font('Helvetica');
+        doc.text(`Espacio de Estacionamiento: ${reservation.ParkingSpot.Code}`);
+        doc.text(`Inicio: ${startTime}`);
+        doc.text(`Fin: ${endTime}`);
+        const horasReservadas = Math.ceil((new Date(reservation.EndAt) - new Date(reservation.StartAt)) / (1000 * 60 * 60));
+        doc.text(`Horas Reservadas: ${horasReservadas} horas`);
+        doc.moveDown();
+
+        // Tabla de precios
+        doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke('#007bff');
+        doc.fontSize(10).font('Helvetica-Bold');
+        const priceY = doc.y + 10;
+        doc.text('Concepto', 40, priceY);
+        doc.text('Cantidad', 350, priceY);
+        doc.text('Precio', 450, priceY, { width: 100, align: 'right' });
+        doc.moveTo(40, doc.y + 5).lineTo(555, doc.y + 5).stroke('#e0e0e0');
+        doc.moveDown();
+
+        doc.fontSize(10).font('Helvetica');
+        doc.text('Estacionamiento', 40);
+        doc.text('1', 350);
+        doc.text(`Q ${amountGTQ}`, 450, doc.y - 10, { width: 100, align: 'right' });
+        doc.moveDown();
+
+        // Total
+        doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke('#007bff');
+        doc.fontSize(12).font('Helvetica-Bold');
+        const totalY = doc.y + 10;
+        doc.text('TOTAL', 350, totalY);
+        doc.text(`Q ${amountGTQ}`, 450, totalY, { width: 100, align: 'right' });
+        doc.moveDown();
+
+        // Pie de página
+        doc.moveTo(40, doc.y + 10).lineTo(555, doc.y + 10).stroke('#007bff');
+        doc.moveDown();
+        doc.fontSize(9).font('Helvetica').text('Gracias por usar ParkPoint Solutions. Para consultas, contacta a soporte@parkpoint.com', { align: 'center' });
+        doc.text('Este documento es valido como comprobante de pago. Favor conservar para su registro.', { align: 'center' });
+        doc.fontSize(8).text(`Generado: ${new Date().toLocaleString('es-ES')}`, { align: 'center' });
+
+        doc.end();
+    } catch (err) {
+        next(err);
+    }
+};
