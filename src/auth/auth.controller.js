@@ -22,3 +22,5 @@ export const register = asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.error('Error in register controller:', error);
+
+        let statusCode = 400;
