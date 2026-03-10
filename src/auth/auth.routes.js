@@ -240,3 +240,28 @@ router.post(
  *       400:
  *         description: Token inválido o expirado
  */
+
+router.post(
+  '/reset-password',
+  authRateLimit,
+  validateResetPassword,
+  authController.resetPassword
+);
+
+/**
+ * @swagger
+ * /api/v1/auth/profile:
+ *   get:
+ *     tags: [Profile]
+ *     summary: Obtiene el perfil del usuario
+ *     description: Devuelve la información del usuario autenticado
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Perfil obtenido exitosamente
+ *       401:
+ *         description: Token inválido
+ *       403:
+ *         description: Email no verificado
+ */
