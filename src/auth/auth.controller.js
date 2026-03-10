@@ -62,3 +62,30 @@ export const login = asyncHandler(async (req, res) => {
         });
     }
 });
+
+export const verifyEmail = asyncHandler(async (req, res) => {
+    try {
+        const { token } = req.body;
+        const result = await verifyEmailHelper(token);
+
+        res.status(200).json(result);
+    } catch (error) {
+        console.error('Error in verifyEmail controller:', error);
+
+        let statusCode = 400;
+        if (error.message.includes('no encontrado')) {
+            statusCode = 404;
+        } else if (
+            error.message.includes('inválido') ||
+            error.message.includes('expirado')
+        ) {
+            statusCode = 401;
+        }
+
+        res.status(statusCode).json({
+            success: false,
+            message: error.message || 'Error en la verificación',
+            error: error.message,
+        });
+    }
+});
