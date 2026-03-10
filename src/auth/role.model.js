@@ -8,3 +8,9 @@ import { ALLOWED_ROLES } from '../../helpers/role-constants.js';
 export const Role = sequelize.define(
     'Role',
     {
+        Id: {
+            type: DataTypes.STRING(16),
+            primaryKey: true,
+            field: 'id',
+            defaultValue: () => generateUserId(),
+        },
