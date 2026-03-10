@@ -115,3 +115,14 @@ export const getReservations = async (req, res, next) => {
         next(err);
     }
 };
+
+export const getReservationById = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const reservation = await Reservation.findByPk(id, { include: ['User', 'ParkingSpot'] });
+        if (!reservation) return res.status(404).json({ error: 'Reserva no encontrada' });
+        res.json(serializeReservation(reservation));
+    } catch (err) {
+        next(err);
+    }
+};
