@@ -174,10 +174,10 @@ router.post(
  */
 
 router.post(
-  '/resend-verification',
-  authRateLimit, // Match .NET AuthPolicy (5 req/min)
-  validateResendVerification,
-  authController.resendVerification
+    '/resend-verification',
+    authRateLimit, // Match .NET AuthPolicy (5 req/min)
+    validateResendVerification,
+    authController.resendVerification
 );
 
 /**
@@ -202,4 +202,41 @@ router.post(
  *     responses:
  *       200:
  *         description: Instrucciones enviadas al email
+ */
+
+router.post(
+    '/forgot-password',
+    authRateLimit, // Match .NET AuthPolicy (5 req/min)
+    validateForgotPassword,
+    authController.forgotPassword
+);
+
+/**
+ * @swagger
+ * /api/v1/auth/reset-password:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Resetea la contraseña
+ *     description: Cambia la contraseña usando el token de recuperación
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - newPassword
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: Token de recuperación de contraseña
+ *               newPassword:
+ *                 type: string
+ *                 description: Nueva contraseña
+ *     responses:
+ *       200:
+ *         description: Contraseña actualizada exitosamente
+ *       400:
+ *         description: Token inválido o expirado
  */
