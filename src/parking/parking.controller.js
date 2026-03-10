@@ -41,3 +41,63 @@ export const updateSpotStatus = async (req, res, next) => {
         next(err);
     }
 };
+
+export const createReservation = async (req, res, next) => {
+    try {
+        const { userId, parkingSpotId, startAt, endAt, priceCents } = req.body;
+
+        // Validar que el espacio existe
+        const spot = await ParkingSpot.findByPk(parkingSpotId);
+        if (!spot) return res.status(404).json({ error: 'Espacio de estacionamiento no encontrado' });
+
+        // Obtener datos del usuario
+        const user = await User.findByPk(userId);
+        if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+        // Crear Stripe PaymentIntent
+        let paymentIntent = null;
+        if (priceCents > 0 && process.env.STRIPE_SECRET_KEY) {
+            // Usar GTQ como moneda local
+            paymentIntent = await stripe.paymentIntents.create({ amount: priceCents, currency: 'gtq' });
+        }
+
+        const reservation = await Reservation.create({
+            UserId: userId,
+            ParkingSpotId: parkingSpotId,
+            StartAt: new Date(startAt),
+            EndAt: new Date(endAt),
+            PriceCents: priceCents,
+            PaymentIntentId: paymentIntent?.id || null,
+        });
+
+        // Guardar en MongoDB
+        try {
+            const { MongoReservation } = await import('./reservation.mongo.model.js');
+            await MongoReservation.create({
+                reservationId: reservation.Id,
+                userId: userId,
+                parkingSpotId: parkingSpotId,
+                spotCode: spot.Code,
+                startAt: new Date(startAt),
+                endAt: new Date(endAt),
+                priceCents: priceCents,
+                status: 'reserved',
+                paymentIntentId: paymentIntent?.id || null,
+                userName: user.Name,
+                userEmail: user.Email,
+                userSurname: user.Surname,
+            });
+            console.log('Reservation synced to MongoDB:', reservation.Id);
+        } catch (mongoErr) {
+            console.warn('Warning: Failed to sync reservation to MongoDB:', mongoErr.message);
+            // No abortamos si MongoDB falla
+        }
+
+        res.status(201).json({
+            reserva: serializeReservation(reservation),
+            secretoCliente: paymentIntent?.client_secret || null,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
