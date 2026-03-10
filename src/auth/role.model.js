@@ -14,3 +14,16 @@ export const Role = sequelize.define(
             field: 'id',
             defaultValue: () => generateUserId(),
         },
+        Name: {
+            type: DataTypes.STRING(50),
+            allowNull: false,
+            unique: true,
+            field: 'name',
+            validate: {
+                notEmpty: { msg: 'El nombre del rol es obligatorio.' },
+                isIn: {
+                    args: [ALLOWED_ROLES],
+                    msg: 'Rol no permitido. Use ADMIN_ROLE o USER_ROLE.',
+                },
+            },
+        },
