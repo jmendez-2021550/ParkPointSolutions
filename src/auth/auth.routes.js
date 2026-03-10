@@ -172,3 +172,34 @@ router.post(
  *       404:
  *         description: Usuario no encontrado
  */
+
+router.post(
+  '/resend-verification',
+  authRateLimit, // Match .NET AuthPolicy (5 req/min)
+  validateResendVerification,
+  authController.resendVerification
+);
+
+/**
+ * @swagger
+ * /api/v1/auth/forgot-password:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Inicia recuperación de contraseña
+ *     description: Envía email con token para resetear contraseña
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: Email del usuario
+ *     responses:
+ *       200:
+ *         description: Instrucciones enviadas al email
+ */
