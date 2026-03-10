@@ -111,3 +111,31 @@ router.post(
  *       423:
  *         description: Cuenta bloqueada
  */
+
+router.post('/login', authRateLimit, validateLogin, authController.login);
+
+/**
+ * @swagger
+ * /api/v1/auth/verify-email:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Verifica el email del usuario
+ *     description: Confirma la dirección de email usando el token enviado
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: Token de verificación de email
+ *     responses:
+ *       200:
+ *         description: Email verificado exitosamente
+ *       400:
+ *         description: Token inválido o expirado
+ */
