@@ -72,3 +72,10 @@ export const processFavorites = async () => {
         console.error('Error procesando favoritos:', error);
     }
 };
+
+export const isUserFavorite = async (userId) => {
+    const favorite = await Favorite.findOne({
+        where: { UserId: userId, IsActive: true },
+    });
+    return !!favorite;
+};
