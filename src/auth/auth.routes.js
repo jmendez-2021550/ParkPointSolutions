@@ -242,10 +242,10 @@ router.post(
  */
 
 router.post(
-  '/reset-password',
-  authRateLimit,
-  validateResetPassword,
-  authController.resetPassword
+    '/reset-password',
+    authRateLimit,
+    validateResetPassword,
+    authController.resetPassword
 );
 
 /**
@@ -265,3 +265,36 @@ router.post(
  *       403:
  *         description: Email no verificado
  */
+
+router.get('/profile', validateJWT, authController.getProfile);
+
+/**
+ * @swagger
+ * /api/v1/auth/profile/by-id:
+ *   post:
+ *     tags: [Profile]
+ *     summary: Obtiene el perfil del usuario por ID
+ *     description: Devuelve la información del usuario basándose en el userId proporcionado
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: ID del usuario
+ *     responses:
+ *       200:
+ *         description: Perfil obtenido exitosamente
+ *       400:
+ *         description: userId no proporcionado
+ *       404:
+ *         description: Usuario no encontrado
+ */
+router.post('/profile/by-id', requestLimit, authController.getProfileById);
+
+export default router;
