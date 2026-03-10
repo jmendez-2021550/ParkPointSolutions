@@ -49,3 +49,9 @@ export const login = asyncHandler(async (req, res) => {
         console.error('Error in login controller:', error);
 
         let statusCode = 401;
+        if (
+            error.message.includes('bloqueada') ||
+            error.message.includes('desactivada')
+        ) {
+            statusCode = 423;
+        }
