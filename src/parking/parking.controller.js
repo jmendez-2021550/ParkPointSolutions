@@ -101,3 +101,17 @@ export const createReservation = async (req, res, next) => {
         next(err);
     }
 };
+
+export const getReservations = async (req, res, next) => {
+    try {
+        const { userId } = req.params;
+        const reservations = await Reservation.findAll({
+            where: { UserId: userId },
+            include: ['User', 'ParkingSpot'],
+            order: [['CreatedAt', 'DESC']],
+        });
+        res.json(serializeReservations(reservations));
+    } catch (err) {
+        next(err);
+    }
+};
