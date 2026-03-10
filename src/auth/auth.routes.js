@@ -8,3 +8,11 @@ import {
 } from '../../middlewares/request-limit.js';
 
 import { upload, handleUploadError } from '../../helpers/file-upload.js';
+import {
+    validateRegister,
+    validateLogin,
+    validateVerifyEmail,
+    validateResendVerification,
+    validateForgotPassword,
+    validateResetPassword,
+} from '../../middlewares/validation.js';
