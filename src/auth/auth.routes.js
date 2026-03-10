@@ -139,3 +139,36 @@ router.post('/login', authRateLimit, validateLogin, authController.login);
  *       400:
  *         description: Token inválido o expirado
  */
+
+router.post(
+    '/verify-email',
+    requestLimit, // Match .NET ApiPolicy (20 tokens per minute)
+    validateVerifyEmail,
+    authController.verifyEmail
+);
+
+/**
+ * @swagger
+ * /api/v1/auth/resend-verification:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Reenvía el email de verificación
+ *     description: Envía nuevamente el email de verificación
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: Email del usuario
+ *     responses:
+ *       200:
+ *         description: Email reenviado exitosamente
+ *       404:
+ *         description: Usuario no encontrado
+ */
