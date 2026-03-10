@@ -94,3 +94,10 @@ export const UserRole = sequelize.define(
         updatedAt: 'updated_at',
     }
 );
+
+// Associations
+User.hasMany(UserRole, { foreignKey: 'user_id', as: 'UserRoles' });
+UserRole.belongsTo(User, { foreignKey: 'user_id', as: 'User' });
+
+Role.hasMany(UserRole, { foreignKey: 'role_id', as: 'UserRoles' });
+UserRole.belongsTo(Role, { foreignKey: 'role_id', as: 'Role' });
