@@ -293,3 +293,36 @@ export const checkoutReservation = async (req, res, next) => {
         next(err);
     }
 };
+
+export const getOccupancy = async (req, res, next) => {
+    try {
+        // Total de espacios
+        const totalSpots = await ParkingSpot.count();
+
+        // Espacios ocupados (con reservas activas)
+        const now = new Date();
+        const occupiedSpots = await Reservation.count({
+            where: {
+                Status: ['reserved', 'active'],
+                StartAt: { [sequelize.Sequelize.Op.lte]: now },
+                EndAt: { [sequelize.Sequelize.Op.gte]: now },
+            },
+        });
+
+        const availableSpots = totalSpots - occupiedSpots;
+        const occupancyRate = totalSpots > 0 ? ((occupiedSpots / totalSpots) * 100).toFixed(2) : '0.00';
+
+        res.json({
+            total: totalSpots,
+            ocupados: occupiedSpots,
+            disponibles: availableSpots,
+            porcentajeOcupacion: `${occupancyRate}%`,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const webhookStripe = async (req, res) => {
+    res.status(200).send('ok');
+};
