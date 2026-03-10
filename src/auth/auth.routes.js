@@ -16,3 +16,5 @@ import {
     validateForgotPassword,
     validateResetPassword,
 } from '../../middlewares/validation.js';
+
+const router = Router();
