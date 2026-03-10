@@ -31,3 +31,10 @@ export const register = asyncHandler(async (req, res) => {
         ) {
             statusCode = 409;
         }
+        res.status(statusCode).json({
+            success: false,
+            message: error.message || 'Error en el registro',
+            error: error.message,
+        });
+    }
+});
