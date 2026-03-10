@@ -44,3 +44,8 @@ export const login = asyncHandler(async (req, res) => {
         const { emailOrUsername, password } = req.body;
         const result = await loginUserHelper(emailOrUsername, password);
         res.status(200).json(result);
+
+    } catch (error) {
+        console.error('Error in login controller:', error);
+
+        let statusCode = 401;
