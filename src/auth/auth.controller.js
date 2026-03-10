@@ -38,3 +38,7 @@ export const register = asyncHandler(async (req, res) => {
         });
     }
 });
+
+export const login = asyncHandler(async (req, res) => {
+    try {
+        const { emailOrUsername, password } = req.body;
