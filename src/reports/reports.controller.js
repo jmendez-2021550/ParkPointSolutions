@@ -148,3 +148,45 @@ export const sendWeeklyReport = async (req, res, next) => {
     next(err);
   }
 };
+
+// generar reservas de ejemplo para probar el reporte (solo en development)
+export const seedDemoReservations = async (req, res, next) => {
+  try {
+    if (process.env.NODE_ENV !== 'development') {
+      return res.status(403).json({ error: 'Solo disponible en ambiente de desarrollo' });
+    }
+    if (!(await ensureSuperAdmin(req))) {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+
+    // buscar usuario superadmin para asignar como autor de las reservas
+    const User = Reservation.sequelize.models.User;
+    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'jmendez-2021550@kinal.edu.gt';
+    const superUser = await User.findOne({ where: { Email: superAdminEmail } });
+    if (!superUser) {
+      return res.status(404).json({ error: 'Usuario superadmin no encontrado' });
+    }
+
+    const spots = await ParkingSpot.findAll({ where: { Code: ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'] } });
+    const now = new Date();
+    const created = [];
+    for (let i = 0; i < 20; i++) {
+      const start = new Date(now.getTime() - Math.random() * 7 * 24 * 60 * 60 * 1000);
+      const end = new Date(start.getTime() + (1 + Math.random() * 3) * 60 * 60 * 1000);
+      const slot = spots[Math.floor(Math.random() * spots.length)];
+      const price = 1000 + Math.floor(Math.random() * 5000);
+      const r = await Reservation.create({
+        UserId: superUser.Id,
+        ParkingSpotId: slot.Id,
+        StartAt: start,
+        EndAt: end,
+        PriceCents: price,
+      });
+      created.push(r.Id);
+    }
+
+    res.json({ message: 'Reservas de prueba creadas', reservations: created });
+  } catch (err) {
+    next(err);
+  }
+};
