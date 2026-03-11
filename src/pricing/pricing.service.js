@@ -61,3 +61,20 @@ export const recommendPrice = async (baseCents = 0, startAt = new Date(), userId
 
   return price;
 };
+
+/**
+ * Endpoint helper: recomienda un precio basándose en parámetros de consulta.
+ * @param {object} query baseCents, startAt, userId
+ */
+export const getQuote = async (query) => {
+  const { config } = await import('../../configs/config.js');
+  const baseCentsParam = parseInt(query.baseCents || '0', 10);
+  const base = baseCentsParam || config.pricing.defaultBasePriceCents || 0;
+  const start = query.startAt ? new Date(query.startAt) : new Date();
+  const userId = query.userId;
+  return {
+    baseCents: base,
+    recommended: await recommendPrice(base, start, userId),
+    occupancyRate: await calculateOccupancyRate(start),
+  };
+};
