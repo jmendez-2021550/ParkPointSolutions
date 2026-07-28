@@ -1,0 +1,244 @@
+import PDFDocument from 'pdfkit';
+import { Op } from 'sequelize';
+import { sequelize } from '../../configs/db.js';
+import { ParkingSpot, Reservation } from '../parking/parking.model.js';
+import { User } from '../users/user.model.js';
+import { getUserRoleNames } from '../../helpers/role-db.js';
+import { SUPER_ADMIN_ROLE } from '../../helpers/role-constants.js';
+import { sendReportEmail } from '../../helpers/email-service.js';
+
+const ensureSuperAdmin = async (req) => {
+  const currentUserId = req.userId;
+  if (!currentUserId) return false;
+  const roles =
+    req.user?.UserRoles?.map((ur) => ur.Role?.Name).filter(Boolean) ??
+    (await getUserRoleNames(currentUserId));
+  return roles.includes(SUPER_ADMIN_ROLE);
+};
+
+const getPeriodStart = (period) => {
+  const now = new Date();
+  const start = new Date(now);
+  switch (period) {
+    case 'day':
+      start.setHours(0, 0, 0, 0);
+      break;
+    case 'week':
+      start.setDate(now.getDate() - 7);
+      break;
+    case 'year':
+      start.setMonth(0, 1);
+      start.setHours(0, 0, 0, 0);
+      break;
+    case 'month':
+    default:
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      break;
+  }
+  return start;
+};
+
+export const getReportsSummary = async (req, res, next) => {
+  try {
+    const period = req.query.period || 'month';
+    const since = getPeriodStart(period);
+
+    const reservations = await Reservation.findAll({
+      where: { CreatedAt: { [Op.gte]: since } },
+    });
+
+    const total = reservations.length;
+    const completadas = reservations.filter((r) => r.Status === 'completed').length;
+    const canceladas = reservations.filter((r) => r.Status === 'cancelled').length;
+    const activas = reservations.filter((r) => r.Status === 'reserved' || r.Status === 'active').length;
+
+    // Only completed reservations count as real income
+    const ingresoCents = reservations
+      .filter((r) => r.Status === 'completed')
+      .reduce((sum, r) => sum + (r.PriceCents || 0), 0);
+
+    res.json({
+      period,
+      totalReservaciones: total,
+      completadas,
+      canceladas,
+      activas,
+      ingresoTotal: (ingresoCents / 100).toFixed(2),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const sendWeeklyReport = async (req, res, next) => {
+  try {
+    if (!(await ensureSuperAdmin(req))) {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    const reservations = await Reservation.findAll({
+      where: { CreatedAt: { [Op.gte]: oneWeekAgo } },
+      include: [{ model: ParkingSpot, as: 'ParkingSpot' }],
+    });
+
+    const total = reservations.length;
+    const bySlot = {};
+    const byDay = {};
+    const byHour = {};
+    reservations.forEach((r) => {
+      const code = r.ParkingSpot?.Code || 'N/A';
+      bySlot[code] = (bySlot[code] || 0) + 1;
+      const day = r.CreatedAt.toISOString().slice(0, 10);
+      byDay[day] = (byDay[day] || 0) + 1;
+      const hour = new Date(r.StartAt || r.CreatedAt).getHours();
+      byHour[hour] = (byHour[hour] || 0) + 1;
+    });
+
+    const totalSpots = await ParkingSpot.count();
+    const occupancyRate = total > 0 ? ((total / (totalSpots * 7)) * 100).toFixed(2) : 0;
+
+    const doc = new PDFDocument({ bufferPages: true, margin: 40 });
+    const buffers = [];
+    doc.on('data', (chunk) => buffers.push(chunk));
+    doc.on('end', async () => {
+      const pdfBuffer = Buffer.concat(buffers);
+      try {
+        // Deliver to the authenticated super admin's own inbox
+        const recipientEmail = req.user?.Email || process.env.SUPER_ADMIN_EMAIL;
+        const { recipient } = await sendReportEmail(pdfBuffer, recipientEmail);
+        res.json({ message: `Reporte enviado a ${recipient}`, recipient });
+      } catch (emailErr) {
+        console.error('Error sending report email:', emailErr);
+        res.status(500).json({ error: 'Reporte generado pero no pudo enviarse por correo', detail: emailErr.message });
+      }
+    });
+
+    const startDate = oneWeekAgo.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+    const endDate = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    doc.fontSize(24).font('Helvetica-Bold').text('ParkPoint Solutions', { align: 'center' });
+    doc.fontSize(10).font('Helvetica').text('Sistema de Estacionamiento Inteligente', { align: 'center' });
+    doc.moveDown(0.3);
+    doc.fontSize(10).text('Avenida Principal, Guatemala | Tel: +502-1234-5678', { align: 'center' });
+    doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke('#007bff');
+    doc.moveDown();
+
+    doc.fontSize(18).font('Helvetica-Bold').text('REPORTE SEMANAL DE OCUPACION', { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(10).font('Helvetica').text(`Periodo: ${startDate} hasta ${endDate}`, { align: 'center' });
+    doc.moveDown();
+
+    doc.fontSize(12).font('Helvetica-Bold').text('RESUMEN EJECUTIVO');
+    doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke('#e0e0e0');
+    doc.moveDown();
+
+    const summaryBoxY = doc.y;
+    doc.rect(40, summaryBoxY, 150, 80).stroke('#007bff');
+    doc.fontSize(10).font('Helvetica').text('Total de Reservas', 50, summaryBoxY + 10);
+    doc.fontSize(20).font('Helvetica-Bold').text(total.toString(), 50, summaryBoxY + 30, { width: 130, align: 'center' });
+    doc.font('Helvetica').fontSize(9).text('(ultimo 7 dias)', 50, summaryBoxY + 60, { width: 130, align: 'center' });
+
+    doc.rect(200, summaryBoxY, 150, 80).stroke('#28a745');
+    doc.fontSize(10).font('Helvetica').text('Espacios Totales', 210, summaryBoxY + 10);
+    doc.fontSize(20).font('Helvetica-Bold').text(totalSpots.toString(), 210, summaryBoxY + 30, { width: 130, align: 'center' });
+    doc.font('Helvetica').fontSize(9).text('disponibles', 210, summaryBoxY + 60, { width: 130, align: 'center' });
+
+    doc.rect(360, summaryBoxY, 150, 80).stroke('#ffc107');
+    doc.fontSize(10).font('Helvetica').text('Ocupacion Promedio', 370, summaryBoxY + 10);
+    doc.fontSize(20).font('Helvetica-Bold').text(`${occupancyRate}%`, 370, summaryBoxY + 30, { width: 130, align: 'center' });
+    doc.font('Helvetica').fontSize(9).text('de la capacidad', 370, summaryBoxY + 60, { width: 130, align: 'center' });
+
+    doc.y = summaryBoxY + 100;
+    doc.moveDown();
+
+    doc.fontSize(12).font('Helvetica-Bold').text('RESERVAS POR DIA');
+    doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke('#e0e0e0');
+    doc.moveDown();
+    doc.fontSize(9).font('Helvetica');
+    Object.entries(byDay).sort().forEach(([day, count]) => {
+      const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
+      doc.text(`${day}: ${count} reservas (${percentage}%)`, 50);
+    });
+    doc.moveDown();
+
+    doc.fontSize(12).font('Helvetica-Bold').text('RESERVAS POR ESPACIO');
+    doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke('#e0e0e0');
+    doc.moveDown();
+    doc.fontSize(9).font('Helvetica');
+    Object.entries(bySlot).sort((a, b) => b[1] - a[1]).slice(0, 15).forEach(([slot, count]) => {
+      const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
+      doc.text(`Espacio ${slot}: ${count} reservas (${percentage}%)`, 50);
+    });
+    doc.moveDown();
+
+    doc.fontSize(12).font('Helvetica-Bold').text('HORAS CON MAS DEMANDA');
+    doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke('#e0e0e0');
+    doc.moveDown();
+    doc.fontSize(9).font('Helvetica');
+    Object.entries(byHour).sort((a, b) => b[1] - a[1]).slice(0, 10).forEach(([hour, count]) => {
+      const h = hour.toString().padStart(2, '0');
+      const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
+      doc.text(`${h}:00 - ${h}:59: ${count} reservas (${percentage}%)`, 50);
+    });
+
+    doc.moveDown(2);
+    doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke('#007bff');
+    doc.moveDown();
+    doc.fontSize(8).font('Helvetica').text('Reporte generado automaticamente por ParkPoint Solutions', { align: 'center' });
+    doc.text(`Fecha de generacion: ${new Date().toLocaleString('es-ES')}`, { align: 'center' });
+
+    doc.end();
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const seedDemoReservations = async (req, res, next) => {
+  try {
+    if (process.env.NODE_ENV !== 'development') {
+      return res.status(403).json({ error: 'Solo disponible en ambiente de desarrollo' });
+    }
+    if (!(await ensureSuperAdmin(req))) {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+
+    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'admin@parkpoint.com';
+    const superUser = await User.findOne({ where: { Email: superAdminEmail } });
+    if (!superUser) {
+      return res.status(404).json({ error: 'Usuario superadmin no encontrado' });
+    }
+
+    const spots = await ParkingSpot.findAll({
+      where: { Code: ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'] },
+    });
+
+    if (spots.length === 0) {
+      return res.status(404).json({ error: 'No se encontraron espacios de estacionamiento' });
+    }
+
+    const now = new Date();
+    const created = [];
+    for (let i = 0; i < 20; i++) {
+      const start = new Date(now.getTime() - Math.random() * 7 * 24 * 60 * 60 * 1000);
+      const end = new Date(start.getTime() + (1 + Math.random() * 3) * 60 * 60 * 1000);
+      const slot = spots[Math.floor(Math.random() * spots.length)];
+      const price = 1000 + Math.floor(Math.random() * 5000);
+      const r = await Reservation.create({
+        UserId: superUser.Id,
+        ParkingSpotId: slot.Id,
+        StartAt: start,
+        EndAt: end,
+        PriceCents: price,
+      });
+      created.push(r.Id);
+    }
+
+    res.json({ message: 'Reservas de prueba creadas', reservations: created });
+  } catch (err) {
+    next(err);
+  }
+};

@@ -1,0 +1,18 @@
+{
+  "name": "parkpoint-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n GATEWAY,AUTH,PARKING,PRICING,FAVORITES,REPORTS -c blue,green,yellow,magenta,cyan,white \"npm:dev:gateway\" \"npm:dev:auth\" \"npm:dev:parking\" \"npm:dev:pricing\" \"npm:dev:favorites\" \"npm:dev:reports\"",
+    "dev:gateway": "cd ApiGateway && node index.js",
+    "dev:auth": "cd AuthService && node index.js",
+    "dev:parking": "cd ParkingService && node index.js",
+    "dev:pricing": "cd PricingService && node index.js",
+    "dev:favorites": "cd FavoritesService && node index.js",
+    "dev:reports": "cd ReportsService && node index.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
