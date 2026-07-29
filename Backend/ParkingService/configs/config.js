@@ -15,7 +15,12 @@ export const config = {
     logging: process.env.DB_SQL_LOGGING === 'true',
   },
   mongo: {
-    uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/ParkPointSolutions',
+    // Acepta MONGODB_URI (nombre estandar) o URI_MONGO (nombre usado en el README).
+    uri:
+      process.env.MONGODB_URI ||
+      process.env.URI_MONGO ||
+      'mongodb://localhost:27017/Parqueo_Inteligente',
+    dbName: process.env.MONGODB_DB_NAME || 'Parqueo_Inteligente',
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'SuperSecretKey',

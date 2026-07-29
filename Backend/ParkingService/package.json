@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "migrate:atlas": "node scripts/migrate-to-atlas.js"
   },
   "dependencies": {
     "@getbrevo/brevo": "^2.5.0",

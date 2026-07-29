@@ -110,7 +110,8 @@ DB_NAME=PARQUEO_INTELIGENTE_DB
 DB_USERNAME=root
 DB_PASSWORD=admin
 
-URI_MONGO=mongodb://localhost:27017/Parqueo_Inteligente
+MONGODB_URI=mongodb://localhost:27017/Parqueo_Inteligente
+MONGODB_DB_NAME=Parqueo_Inteligente
 
 JWT_SECRET=MyVerySecretKeyForJWTTokenAuthenticationWith256Bits!
 JWT_EXPIRES_IN=30m
@@ -146,12 +147,60 @@ Esto creará un contenedor con PostgreSQL automáticamente.
 
 ### Paso 5: Configurar MongoDB
 
-MongoDB se usa para guardar colecciones complementarias. Puedes:
+MongoDB guarda la colección `reservations` (copia de las reservas que viven en PostgreSQL).
+La variable que lee el backend es **`MONGODB_URI`**, en `Backend/ParkingService/.env`.
 
-- **Instalar MongoDB localmente** desde https://www.mongodb.com/try/download/community
-- **O usar MongoDB Atlas** (cloud gratuito): https://www.mongodb.com/cloud/atlas
+**Opción A: Docker (por defecto)**
 
-Si usas Atlas, actualiza el valor de `URI_MONGO` en el archivo `.env` con tu conexión.
+`docker-compose up -d` ya levanta el contenedor `parkpointsolutions_mongo` en el puerto 27017.
+Los datos quedan en el volumen de Docker `parkpointsolutions_mongo_data`.
+
+Para verlo en MongoDB Compass conéctate a:
+
+```
+mongodb://localhost:27017
+```
+
+y abre la base de datos **`Parqueo_Inteligente`** (no aparece hasta que se crea la primera reserva).
+
+**Opción B: MongoDB Atlas (nube)**
+
+1. Crea una cuenta y un clúster gratuito M0 en https://www.mongodb.com/cloud/atlas
+2. *Database Access* → crea un usuario con rol `readWrite` sobre `Parqueo_Inteligente`
+3. *Network Access* → agrega tu IP (o `0.0.0.0/0` solo para pruebas)
+4. *Connect → Drivers* → copia la cadena `mongodb+srv://...`
+5. Ponla en `Backend/ParkingService/.env`:
+
+```
+MONGODB_URI=mongodb+srv://<usuario>:<password>@<cluster>.xxxxx.mongodb.net/?retryWrites=true&w=majority
+MONGODB_DB_NAME=Parqueo_Inteligente
+```
+
+6. (Opcional) Migra los datos que ya tengas en local hacia Atlas:
+
+```bash
+cd Backend/ParkingService
+npm run migrate:atlas
+```
+
+> Si la contraseña tiene caracteres especiales (`@`, `#`, `/`, `:`), debes codificarla en URL.
+
+**Si al conectar sale `querySrv ECONNREFUSED`**
+
+Significa que Node no puede resolver registros DNS de tipo SRV (pasa cuando un adaptador
+de WSL, Docker o una VPN deja `127.0.0.1` como servidor DNS). Compruébalo con:
+
+```bash
+node -e "console.log(require('dns').getServers())"
+```
+
+Si devuelve `[ '127.0.0.1' ]`, usa la **cadena estándar** en vez de la `mongodb+srv://`.
+En Atlas: *Connect → Drivers*, y en el selector de versión del driver elige **2.2.12 or later**;
+te dará una cadena con los tres nodos del replica set, que no necesita SRV:
+
+```
+MONGODB_URI=mongodb://<usuario>:<password>@<nodo-00>:27017,<nodo-01>:27017,<nodo-02>:27017/?ssl=true&replicaSet=<replicaSet>&authSource=admin&retryWrites=true&w=majority
+```
 
 ### Paso 6: Configurar Stripe (Pagos digitales)
 
