@@ -1,41 +1,15 @@
-import nodemailer from 'nodemailer';
+import { TransactionalEmailsApi, TransactionalEmailsApiApiKeys } from '@getbrevo/brevo';
 import { config } from '../configs/config.js';
 
-const createTransporter = () => {
-  if (!config.smtp.username || !config.smtp.password) {
-    console.warn('SMTP credentials not configured. Email functionality may fail.');
-    return null;
-  }
-
-  return nodemailer.createTransport({
-    host: config.smtp.host,
-    port: config.smtp.port,
-    secure: config.smtp.enableSsl,
-    auth: {
-      user: config.smtp.username,
-      pass: config.smtp.password,
-    },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-    tls: {
-      rejectUnauthorized: false,
-    },
-  });
-};
-
-const transporter = createTransporter();
+const apiInstance = new TransactionalEmailsApi();
+apiInstance.setApiKey(TransactionalEmailsApiApiKeys.apiKey, config.brevo.apiKey);
 
 export const sendInvoiceEmail = async (email, name, surname, pdfBuffer) => {
-  if (!transporter) {
-    throw new Error('SMTP transporter not configured');
-  }
-
-  const mailOptions = {
-    from: `${config.smtp.fromName} <${config.smtp.fromEmail}>`,
-    to: email,
+  const sendSmtpEmail = {
+    sender: { name: config.brevo.fromName, email: config.brevo.fromEmail },
+    to: [{ email }],
     subject: 'Factura de tu reserva - ParkPoint Solutions',
-    html: `
+    htmlContent: `
       <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4;">
         <div style="background: white; padding: 30px; border-radius: 10px;">
           <h1 style="color: #007bff;">ParkPoint Solutions</h1>
@@ -45,15 +19,15 @@ export const sendInvoiceEmail = async (email, name, surname, pdfBuffer) => {
         </div>
       </div>
     `,
-    attachments: [
+    attachment: [
       {
-        filename: 'factura.pdf',
-        content: pdfBuffer,
+        name: 'factura.pdf',
+        content: pdfBuffer.toString('base64'),
       },
     ],
   };
 
-  const info = await transporter.sendMail(mailOptions);
-  console.log('Invoice email sent:', info.messageId);
-  return info;
+  const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
+  console.log('Invoice email sent:', result.body?.messageId || 'OK');
+  return result;
 };

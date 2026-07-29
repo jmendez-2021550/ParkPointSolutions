@@ -20,13 +20,9 @@ export const config = {
     issuer: process.env.JWT_ISSUER || 'parkpoint-auth',
     audience: process.env.JWT_AUDIENCE || 'parkpoint-users',
   },
-  smtp: {
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT, 10) || 587,
-    enableSsl: process.env.SMTP_SECURE === 'true',
-    username: process.env.SMTP_USERNAME || '',
-    password: process.env.SMTP_PASSWORD || '',
-    fromEmail: process.env.EMAIL_FROM || 'no-reply@parkpoint.com',
-    fromName: process.env.EMAIL_FROM_NAME || 'ParkPoint Solutions',
+  brevo: {
+    apiKey: process.env.BREVO_API_KEY || '',
+    fromEmail: process.env.BREVO_FROM_EMAIL || 'miguelhillofuentes223@gmail.com',
+    fromName: process.env.BREVO_FROM_NAME || 'ParkPoint',
   },
 };

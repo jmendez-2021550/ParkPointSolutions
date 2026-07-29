@@ -1,36 +1,15 @@
-import nodemailer from 'nodemailer';
+import { TransactionalEmailsApi, TransactionalEmailsApiApiKeys } from '@getbrevo/brevo';
 import { config } from '../configs/config.js';
 
-const createTransporter = () => {
-  if (!config.smtp.username || !config.smtp.password) {
-    console.warn('SMTP credentials not configured. Email functionality may fail.');
-    return null;
-  }
-
-  return nodemailer.createTransport({
-    host: config.smtp.host,
-    port: config.smtp.port,
-    secure: config.smtp.enableSsl,
-    auth: { user: config.smtp.username, pass: config.smtp.password },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-    tls: { rejectUnauthorized: false },
-  });
-};
-
-const transporter = createTransporter();
+const apiInstance = new TransactionalEmailsApi();
+apiInstance.setApiKey(TransactionalEmailsApiApiKeys.apiKey, config.brevo.apiKey);
 
 export const sendFavoriteEmail = async (email, name) => {
-  if (!transporter) {
-    throw new Error('SMTP transporter not configured');
-  }
-
-  const mailOptions = {
-    from: `${config.smtp.fromName} <${config.smtp.fromEmail}>`,
-    to: email,
+  const sendSmtpEmail = {
+    sender: { name: config.brevo.fromName, email: config.brevo.fromEmail },
+    to: [{ email }],
     subject: '¡Felicidades! Eres un Usuario Favorito en ParkPoint Solutions',
-    html: `
+    htmlContent: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
         <div style="background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
           <h1 style="color: #333; text-align: center;">¡Felicidades ${name}!</h1>
@@ -48,7 +27,7 @@ export const sendFavoriteEmail = async (email, name) => {
     `,
   };
 
-  const info = await transporter.sendMail(mailOptions);
-  console.log('Favorite email sent:', info.messageId);
-  return info;
+  const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
+  console.log('Favorite email sent:', result.body?.messageId || 'OK');
+  return result;
 };
