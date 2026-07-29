@@ -3,7 +3,9 @@ import { validateJWT } from '../../middlewares/validate-jwt.js';
 import {
   getSpots,
   getSpotById,
+  createSpot,
   updateSpotStatus,
+  deleteSpot,
   createReservation,
   getReservations,
   getAllReservations,
@@ -29,7 +31,9 @@ router.get('/user/:userId', validateJWT, getReservations);
 
 // Parking Spots (/:id must come last)
 router.get('/', getSpots);
+router.post('/', validateJWT, createSpot);
 router.get('/:id', getSpotById);
 router.put('/:id/status', updateSpotStatus);
+router.delete('/:id', validateJWT, deleteSpot);
 
 export default router;

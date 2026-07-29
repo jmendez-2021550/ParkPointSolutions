@@ -292,6 +292,47 @@ export const getAllReservations = async (req, res, next) => {
   }
 };
 
+export const createSpot = async (req, res, next) => {
+  try {
+    const { code, level, sensorType } = req.body;
+    if (!code) return res.status(400).json({ error: 'El código del espacio es obligatorio' });
+
+    const existing = await ParkingSpot.findOne({ where: { Code: code } });
+    if (existing) return res.status(409).json({ error: 'Ya existe un espacio con ese código' });
+
+    const spot = await ParkingSpot.create({
+      Code: code,
+      Level: level || null,
+      SensorType: sensorType || null,
+      Status: 'available',
+    });
+
+    res.status(201).json(serializeParkingSpot(spot));
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deleteSpot = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const spot = await ParkingSpot.findByPk(id);
+    if (!spot) return res.status(404).json({ error: 'Espacio no encontrado' });
+
+    const activeReservations = await Reservation.count({
+      where: { ParkingSpotId: id, Status: ['reserved', 'active'] },
+    });
+    if (activeReservations > 0) {
+      return res.status(409).json({ error: 'No se puede eliminar un espacio con reservas activas' });
+    }
+
+    await spot.destroy();
+    res.json({ mensaje: 'Espacio eliminado exitosamente', id });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const getOccupancy = async (req, res, next) => {
   try {
     const totalSpots = await ParkingSpot.count();

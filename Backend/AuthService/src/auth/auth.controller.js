@@ -5,8 +5,9 @@ import {
   resendVerificationEmailHelper,
   forgotPasswordHelper,
   resetPasswordHelper,
+  changePasswordHelper,
 } from '../../helpers/auth-operations.js';
-import { getUserProfileHelper } from '../../helpers/profile-operations.js';
+import { getUserProfileHelper, updateProfileHelper } from '../../helpers/profile-operations.js';
 import { asyncHandler } from '../../middlewares/server-genericError-handler.js';
 
 export const register = asyncHandler(async (req, res) => {
@@ -66,4 +67,21 @@ export const getProfileById = asyncHandler(async (req, res) => {
   }
   const data = await getUserProfileHelper(userId);
   return res.status(200).json({ success: true, message: 'Perfil obtenido exitosamente', data });
+});
+
+export const updateProfile = asyncHandler(async (req, res) => {
+  const userId = req.userId;
+  const { name, surname, phone } = req.body;
+  const data = await updateProfileHelper(userId, { name, surname, phone });
+  return res.status(200).json({ success: true, message: 'Perfil actualizado exitosamente', data });
+});
+
+export const changePassword = asyncHandler(async (req, res) => {
+  const userId = req.userId;
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ success: false, message: 'La contraseña actual y la nueva son requeridas' });
+  }
+  const result = await changePasswordHelper(userId, currentPassword, newPassword);
+  return res.status(200).json(result);
 });

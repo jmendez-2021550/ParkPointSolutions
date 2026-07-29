@@ -21,5 +21,7 @@ router.post('/reset-password', validateResetPassword, authController.resetPasswo
 
 router.get('/profile', validateJWT, authController.getProfile);
 router.post('/profile/by-id', validateJWT, authController.getProfileById);
+router.put('/profile', validateJWT, authController.updateProfile);
+router.put('/password', validateJWT, authController.changePassword);
 
 export default router;

@@ -182,3 +182,24 @@ export const getUserProfileHelper = async (userId) => {
   }
   return buildUserResponse(user);
 };
+
+export const changePasswordHelper = async (userId, currentPassword, newPassword) => {
+  const user = await findUserById(userId);
+  if (!user) {
+    const err = new Error('Usuario no encontrado');
+    err.status = 404;
+    throw err;
+  }
+
+  const isValid = await verifyPassword(user.Password, currentPassword);
+  if (!isValid) {
+    const err = new Error('La contraseña actual no es correcta');
+    err.status = 400;
+    throw err;
+  }
+
+  const hashed = await hashPassword(newPassword);
+  await updateUserPassword(userId, hashed);
+
+  return { success: true, message: 'Contraseña actualizada exitosamente' };
+};
