@@ -6,7 +6,12 @@ node_modules/
 .env
 **/.env
 *.env
+.env.*
+**/.env.*
+# .env.docker lleva credenciales reales: NUNCA se versiona.
+# Lo que si se versiona es la plantilla sin valores:
 !**/.env.example
+!**/.env.docker.example
 
 # ── Build / salida ────────────────────────────
 dist/

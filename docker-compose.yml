@@ -1,28 +1,173 @@
 version: "3.8"
 
 services:
+  # =============================================
+  # PostgreSQL
+  # =============================================
   postgres:
     image: postgres:16
-    container_name: parkpointsolutions_postgres
-    restart: always
+    container_name: parkpoint_postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
-     - "${DB_PORT}:5432"
+      - "${DB_PORT}:5432"
     volumes:
-      - parkpointsolutions_data:/var/lib/postgresql/data
+      - parkpoint_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - parkpoint-net
 
-  mongodb:
-    image: mongo:7
-    container_name: parkpointsolutions_mongo
-    restart: always
+  # =============================================
+  # API Gateway
+  # =============================================
+  api-gateway:
+    build:
+      context: ./Backend/ApiGateway
+      dockerfile: Dockerfile
+    container_name: parkpoint_gateway
+    restart: unless-stopped
+    env_file: .env.docker
+    environment:
+      PORT: 4000
     ports:
-      - "27017:27017"
-    volumes:
-      - parkpointsolutions_mongo_data:/data/db
+      - "4000:4000"
+    depends_on:
+      - auth-service
+      - parking-service
+      - pricing-service
+      - favorites-service
+      - reports-service
+    networks:
+      - parkpoint-net
+
+  # =============================================
+  # Auth Service
+  # =============================================
+  auth-service:
+    build:
+      context: ./Backend/AuthService
+      dockerfile: Dockerfile
+    container_name: parkpoint_auth
+    restart: unless-stopped
+    env_file: .env.docker
+    environment:
+      PORT: 4001
+    ports:
+      - "4001:4001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - parkpoint-net
+
+  # =============================================
+  # Parking Service
+  # =============================================
+  parking-service:
+    build:
+      context: ./Backend/ParkingService
+      dockerfile: Dockerfile
+    container_name: parkpoint_parking
+    restart: unless-stopped
+    env_file: .env.docker
+    environment:
+      PORT: 4002
+    ports:
+      - "4002:4002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - parkpoint-net
+
+  # =============================================
+  # Pricing Service
+  # =============================================
+  pricing-service:
+    build:
+      context: ./Backend/PricingService
+      dockerfile: Dockerfile
+    container_name: parkpoint_pricing
+    restart: unless-stopped
+    env_file: .env.docker
+    environment:
+      PORT: 4003
+    ports:
+      - "4003:4003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - parkpoint-net
+
+  # =============================================
+  # Favorites Service
+  # =============================================
+  favorites-service:
+    build:
+      context: ./Backend/FavoritesService
+      dockerfile: Dockerfile
+    container_name: parkpoint_favorites
+    restart: unless-stopped
+    env_file: .env.docker
+    environment:
+      PORT: 4004
+    ports:
+      - "4004:4004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - parkpoint-net
+
+  # =============================================
+  # Reports Service
+  # =============================================
+  reports-service:
+    build:
+      context: ./Backend/ReportsService
+      dockerfile: Dockerfile
+    container_name: parkpoint_reports
+    restart: unless-stopped
+    env_file: .env.docker
+    environment:
+      PORT: 4005
+    ports:
+      - "4005:4005"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - parkpoint-net
+
+  # =============================================
+  # Frontend (Vite)
+  # =============================================
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    container_name: parkpoint_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://api-gateway:4000
+    depends_on:
+      - api-gateway
+    networks:
+      - parkpoint-net
 
 volumes:
-  parkpointsolutions_data:
-  parkpointsolutions_mongo_data:
+  parkpoint_postgres_data:
+
+networks:
+  parkpoint-net:
+    driver: bridge

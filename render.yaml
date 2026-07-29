@@ -1,0 +1,356 @@
+# ============================================
+# ParkPoint Solutions — Render Blueprint
+# ============================================
+# Este archivo define toda la infraestructura
+# para desplegar en Render.
+#
+# Uso:
+#   1. Conecta tu repo de GitHub a Render
+#   2. Render detecta render.yaml automáticamente
+#   3. Crea los servicios y la BD con un clic
+# ============================================
+
+databases:
+  - name: parkpoint-db
+    databaseName: PARQUEO_INTELIGENTE_DB
+    plan: starter
+
+services:
+  # =============================================
+  # API Gateway — Puerto 4000
+  # =============================================
+  - type: web
+    name: parkpoint-api-gateway
+    runtime: docker
+    repo: https://github.com/jmendez-2021550/ParkPointSolutions
+    branch: main
+    rootDir: Backend/ApiGateway
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AUTH_SERVICE_URL
+        fromService:
+          name: parkpoint-auth-service
+          type: web
+          property: host
+      - key: PARKING_SERVICE_URL
+        fromService:
+          name: parkpoint-parking-service
+          type: web
+          property: host
+      - key: PRICING_SERVICE_URL
+        fromService:
+          name: parkpoint-pricing-service
+          type: web
+          property: host
+      - key: FAVORITES_SERVICE_URL
+        fromService:
+          name: parkpoint-favorites-service
+          type: web
+          property: host
+      - key: REPORTS_SERVICE_URL
+        fromService:
+          name: parkpoint-reports-service
+          type: web
+          property: host
+
+  # =============================================
+  # Auth Service — Puerto 4001
+  # =============================================
+  - type: web
+    name: parkpoint-auth-service
+    runtime: docker
+    repo: https://github.com/jmendez-2021550/ParkPointSolutions
+    branch: main
+    rootDir: Backend/AuthService
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase:
+          name: parkpoint-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: parkpoint-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: parkpoint-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: parkpoint-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: parkpoint-db
+          property: password
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 30m
+      - key: JWT_ISSUER
+        value: AuthService
+      - key: JWT_AUDIENCE
+        value: AuthService
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_FROM_NAME
+        value: ParkPoint Solutions
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_BASE_URL
+        sync: false
+      - key: CLOUDINARY_FOLDER
+        value: gestor-opiniones/profiles
+      - key: CLOUDINARY_DEFAULT_AVATAR_FILENAME
+        value: default-avatar_ewzxwx.png
+      - key: FRONTEND_URL
+        sync: false
+      - key: SUPER_ADMIN_EMAIL
+        sync: false
+
+  # =============================================
+  # Parking Service — Puerto 4002
+  # =============================================
+  - type: web
+    name: parkpoint-parking-service
+    runtime: docker
+    repo: https://github.com/jmendez-2021550/ParkPointSolutions
+    branch: main
+    rootDir: Backend/ParkingService
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase:
+          name: parkpoint-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: parkpoint-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: parkpoint-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: parkpoint-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: parkpoint-db
+          property: password
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB_NAME
+        value: Parqueo_Inteligente
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 30m
+      - key: JWT_ISSUER
+        value: AuthService
+      - key: JWT_AUDIENCE
+        value: AuthService
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_FROM_EMAIL
+        sync: false
+      - key: BREVO_FROM_NAME
+        value: ParkPoint
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: DEFAULT_BASE_PRICE_CENTS
+        value: "500"
+      - key: PRICING_HIGH_MULTIPLIER
+        value: "1.5"
+      - key: PRICING_LOW_MULTIPLIER
+        value: "0.8"
+      - key: PRICING_HIGH_THRESHOLD
+        value: "0.8"
+      - key: PRICING_LOW_THRESHOLD
+        value: "0.3"
+      - key: SUPER_ADMIN_EMAIL
+        sync: false
+
+  # =============================================
+  # Pricing Service — Puerto 4003
+  # =============================================
+  - type: web
+    name: parkpoint-pricing-service
+    runtime: docker
+    repo: https://github.com/jmendez-2021550/ParkPointSolutions
+    branch: main
+    rootDir: Backend/PricingService
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase:
+          name: parkpoint-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: parkpoint-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: parkpoint-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: parkpoint-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: parkpoint-db
+          property: password
+      - key: DEFAULT_BASE_PRICE_CENTS
+        value: "4000"
+      - key: PRICING_HIGH_MULTIPLIER
+        value: "1.5"
+      - key: PRICING_LOW_MULTIPLIER
+        value: "0.8"
+      - key: PRICING_HIGH_THRESHOLD
+        value: "0.8"
+      - key: PRICING_LOW_THRESHOLD
+        value: "0.3"
+
+  # =============================================
+  # Favorites Service — Puerto 4004
+  # =============================================
+  - type: web
+    name: parkpoint-favorites-service
+    runtime: docker
+    repo: https://github.com/jmendez-2021550/ParkPointSolutions
+    branch: main
+    rootDir: Backend/FavoritesService
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase:
+          name: parkpoint-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: parkpoint-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: parkpoint-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: parkpoint-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: parkpoint-db
+          property: password
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 30m
+      - key: JWT_ISSUER
+        value: AuthService
+      - key: JWT_AUDIENCE
+        value: AuthService
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_FROM_NAME
+        value: ParkPoint Solutions
+      - key: SUPER_ADMIN_EMAIL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+
+  # =============================================
+  # Reports Service — Puerto 4005
+  # =============================================
+  - type: web
+    name: parkpoint-reports-service
+    runtime: docker
+    repo: https://github.com/jmendez-2021550/ParkPointSolutions
+    branch: main
+    rootDir: Backend/ReportsService
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase:
+          name: parkpoint-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: parkpoint-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: parkpoint-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: parkpoint-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: parkpoint-db
+          property: password
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 30m
+      - key: JWT_ISSUER
+        value: AuthService
+      - key: JWT_AUDIENCE
+        value: AuthService
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_FROM_NAME
+        value: ParkPoint Solutions
+      - key: SUPER_ADMIN_EMAIL
+        sync: false

@@ -35,7 +35,8 @@ export const sendVerificationEmail = async (email, name, verificationToken) => {
     `,
   };
 
-  await apiInstance.sendTransacEmail(sendSmtpEmail);
+  const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
+  console.log('Brevo sendVerificationEmail OK — messageId:', response.body?.messageId || '(no messageId)');
 };
 
 export const sendWelcomeEmail = async (email, name) => {
@@ -58,7 +59,8 @@ export const sendWelcomeEmail = async (email, name) => {
     `,
   };
 
-  await apiInstance.sendTransacEmail(sendSmtpEmail);
+  const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
+  console.log('Brevo sendWelcomeEmail OK — messageId:', response.body?.messageId || '(no messageId)');
 };
 
 export const sendPasswordResetEmail = async (email, name, resetToken) => {
@@ -86,5 +88,6 @@ export const sendPasswordResetEmail = async (email, name, resetToken) => {
     `,
   };
 
-  await apiInstance.sendTransacEmail(sendSmtpEmail);
+  const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
+  console.log('Brevo sendPasswordResetEmail OK — messageId:', response.body?.messageId || '(no messageId)');
 };

@@ -113,7 +113,7 @@ DB_PASSWORD=admin
 MONGODB_URI=mongodb://localhost:27017/Parqueo_Inteligente
 MONGODB_DB_NAME=Parqueo_Inteligente
 
-JWT_SECRET=MyVerySecretKeyForJWTTokenAuthenticationWith256Bits!
+JWT_SECRET=<genera_una_clave_larga_y_aleatoria>
 JWT_EXPIRES_IN=30m
 
 FRONTEND_URL=http://localhost:5173
